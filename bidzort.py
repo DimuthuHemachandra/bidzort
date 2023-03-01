@@ -1,10 +1,25 @@
 import pandas as pd
 import os
-import shutil
+import argparse
 
-bids_dir = '/home/dimuthu1/projects/ctb-akhanf/ext-bids/ppmi/ppmi-bids-smk/bids_workflow/subj_bids/PPMI_CTRL_DTI_MRI_3T'
+parser = argparse.ArgumentParser(description='Sorts a BIDS data directory and give a summary of T1w, T2w, Diffusion and fMRI data.')
+
+parser.add_argument('--bids_dir', help='Path to the bids directory', type=str)
+parser.add_argument('--out_dir', help='Out put path where you want the summary tables to be saved', type=str, default='./')
+                    
+
+args = parser.parse_args()
+bids_dir = args.bids_dir
+out_dir = args.out_dir
+
+#bids_dir = '/home/dimuthu1/projects/ctb-akhanf/ext-bids/ppmi/ppmi-bids-smk/bids_workflow/subj_bids/PPMI_CTRL_DTI_MRI_3T'
+#bids_dir = '/home/dimuthu1/projects/ctb-akhanf/cfmm-projects/MacDonald/VTASN_3T/bids'
 
 def do_ls(current_dir, kind):
+	#This function is doing something similar to 'ls' in shell. But modified to get directories and files as required.
+	#Kind=='None' will give directories and and other string will sort the matching files.
+	#This is implemented to avoid sorting other bids files that are not necessary for our sorting purpose.
+
     if kind == 'None':
         return [dir for dir in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, dir))]
     else:
@@ -66,7 +81,7 @@ def get_summary(df):
 		
 	#print(ses_dict_list)
 	session_df = pd.DataFrame(ses_dict_list)
-	session_df.to_csv('sorted_bids_session_data.csv', sep=',', index=False)
+	session_df.to_csv(out_dir+'/sorted_bids_session_data.csv', sep=',', index=False)
 	
 		
     
@@ -77,67 +92,115 @@ directories = do_ls(bids_dir, 'sub')
 
 dict_list = []
 for i, subj in enumerate(directories):
-    content = do_ls(bids_dir + '/' + subj, 'None')
-    session = any('ses' in item for item in content)
+	content = do_ls(bids_dir + '/' + subj, 'None')
+	session = any('ses' in item for item in content)
     
-    if session:
-        for ses in content:
-            mods = do_ls(bids_dir + '/' + subj + '/' + ses, 'None')
-            sub_dict = {'Number': i, 'ID': subj, 'session': ses}
-            t1_count = 0
-            t2_count = 0
-            dwi_count = 0
-            func_count = 0
+	if session:
+		for ses in content:
+			mods = do_ls(bids_dir + '/' + subj + '/' + ses, 'None')
+			sub_dict = {'Number': i, 'ID': subj, 'session': ses}
+			t1_count = 0
+			t2_count = 0
+			dwi_count = 0
+			func_count = 0
             
-            for mod in mods:
-                if mod == 'anat':
-                    T1 = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'T1w.nii')
-                    t1_count = len(T1)
-                    sub_dict['t1'] = 'yes'
-                    sub_dict['t1_runs'] = t1_count
-                    
-                    T2 = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'T2w.nii')
-                    t2_count = len(T2)
-                    sub_dict['t2'] = 'yes'
-                    sub_dict['t2_runs'] = t2_count
-                    
-                elif mod == 'dwi':
-                    dwi = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'dwi.nii')
-                    dwi_count = len(dwi)
-                    sub_dict['dwi'] = 'yes'
-                    sub_dict['dwi_runs'] = dwi_count	
-            
-                elif mod == 'func':
-                    func = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'bold.nii')
-                    func_count = len(func)
-                    sub_dict['func'] = 'yes'
-                    sub_dict['func_runs'] = func_count	
-            
-            if t1_count == 0:
-                sub_dict['t1'] = 'No'
-                sub_dict['t1_runs'] = 'None'
+			for mod in mods:
+				if mod == 'anat':
+					T1 = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'T1w.nii')
+					t1_count = len(T1)
+					sub_dict['t1'] = 'yes'
+					sub_dict['t1_runs'] = t1_count
+					
+					T2 = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'T2w.nii')
+					t2_count = len(T2)
+					sub_dict['t2'] = 'yes'
+					sub_dict['t2_runs'] = t2_count
+					
+				elif mod == 'dwi':
+					dwi = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'dwi.nii')
+					dwi_count = len(dwi)
+					sub_dict['dwi'] = 'yes'
+					sub_dict['dwi_runs'] = dwi_count	
 
-            if t2_count == 0:
-                sub_dict['t2'] = 'No'
-                sub_dict['t2_runs'] = 'None'
-        
-            if dwi_count == 0:
-                sub_dict['dwi'] = 'No'
-                sub_dict['dwi_runs'] = 'None'
+				elif mod == 'func':
+					func = do_ls(bids_dir + '/' + subj + '/' + ses + '/' + mod, 'bold.nii')
+					func_count = len(func)
+					sub_dict['func'] = 'yes'
+					sub_dict['func_runs'] = func_count	
+            
+			if t1_count == 0:
+				sub_dict['t1'] = 'No'
+				sub_dict['t1_runs'] = 'None'
 
-            if func_count == 0:
-                sub_dict['func'] = 'No'
-                sub_dict['func_runs'] = 'None'
-                    
-            #print(sub_dict)
-            dict_list.append(sub_dict)
+			if t2_count == 0:
+				sub_dict['t2'] = 'No'
+				sub_dict['t2_runs'] = 'None'
+
+			if dwi_count == 0:
+				sub_dict['dwi'] = 'No'
+				sub_dict['dwi_runs'] = 'None'
+
+			if func_count == 0:
+				sub_dict['func'] = 'No'
+				sub_dict['func_runs'] = 'None'
+					
+			#print(sub_dict)
+			dict_list.append(sub_dict)
         
-    else:
-        sub_dict['session'] = None
-        mods = do_ls(bids_dir + '/' + subj + '/' + content)
+	else:
+
+		mods = do_ls(bids_dir + '/' + subj , 'None')
+		sub_dict = {'Number': i, 'ID': subj, 'session': 'Baseline'}  #If there are no sessions, Available data will be assigned as Baseline
+		t1_count = 0
+		t2_count = 0
+		dwi_count = 0
+		func_count = 0
+            
+		for mod in mods:
+			if mod == 'anat':
+				T1 = do_ls(bids_dir + '/' + subj + '/' + mod, 'T1w.nii')
+				t1_count = len(T1)
+				sub_dict['t1'] = 'yes'
+				sub_dict['t1_runs'] = t1_count
+				
+				T2 = do_ls(bids_dir + '/' + subj + '/' + mod, 'T2w.nii')
+				t2_count = len(T2)
+				sub_dict['t2'] = 'yes'
+				sub_dict['t2_runs'] = t2_count
+				
+			elif mod == 'dwi':
+				dwi = do_ls(bids_dir + '/' + subj + '/' + mod, 'dwi.nii')
+				dwi_count = len(dwi)
+				sub_dict['dwi'] = 'yes'
+				sub_dict['dwi_runs'] = dwi_count	
+			
+			elif mod == 'func':
+				func = do_ls(bids_dir + '/' + subj + '/' + mod, 'bold.nii')
+				func_count = len(func)
+				sub_dict['func'] = 'yes'
+				sub_dict['func_runs'] = func_count	
+	    
+		if t1_count == 0:
+			sub_dict['t1'] = 'No'
+			sub_dict['t1_runs'] = 'None'
+
+		if t2_count == 0:
+			sub_dict['t2'] = 'No'
+			sub_dict['t2_runs'] = 'None'
+
+		if dwi_count == 0:
+			sub_dict['dwi'] = 'No'
+			sub_dict['dwi_runs'] = 'None'
+
+		if func_count == 0:
+			sub_dict['func'] = 'No'
+			sub_dict['func_runs'] = 'None'
+			
+		#print(sub_dict)
+		dict_list.append(sub_dict)
         
 df = pd.DataFrame(dict_list)
-df.to_csv('sorted_bids_data.csv', sep=',', index=False)
+df.to_csv(out_dir+'/sorted_bids_data.csv', sep=',', index=False)
 
 get_summary(df)
 
